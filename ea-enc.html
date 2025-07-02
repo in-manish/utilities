@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AES Encrypt/Decrypt Tool</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- CryptoJS for AES -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+  <!-- QRious for QR Code Generation -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+  <div class="bg-white w-full max-w-2xl p-8 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold mb-6 text-center">🔐 AES Encrypt / Decrypt Tool</h2>
+
+    <!-- Mode Select -->
+    <div class="mb-4">
+      <label class="block mb-2 font-medium">Mode</label>
+      <select id="mode" onchange="toggleMode()" class="w-full px-4 py-2 border rounded">
+        <option value="encrypt">Encrypt</option>
+        <option value="decrypt">Decrypt</option>
+      </select>
+    </div>
+
+    <!-- Encrypt Form -->
+    <div id="encryptForm">
+      <label class="block mb-2 font-medium">Text to Encrypt</label>
+      <textarea id="encryptText" rows="4" placeholder="Enter text or JSON to encrypt..." class="w-full p-3 border rounded resize-none"></textarea>
+      <button onclick="handleEncrypt()" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full">
+        🔒 Encrypt
+      </button>
+    </div>
+
+    <!-- Decrypt Form -->
+    <div id="decryptForm" class="hidden">
+      <label class="block mb-2 font-medium">Encrypted Link</label>
+      <input id="decryptLink" type="text" placeholder="Paste encrypted link here..." class="w-full p-3 border rounded" />
+      <button onclick="handleDecrypt()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 w-full">
+        🔓 Decrypt
+      </button>
+    </div>
+
+    <!-- Result -->
+    <div class="mt-6">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-lg font-semibold">Result</h3>
+        <button onclick="copyResult()" class="text-sm text-blue-600 hover:underline">📋 Copy</button>
+      </div>
+      <pre id="output" class="bg-gray-100 p-4 rounded border text-sm overflow-x-auto whitespace-pre-wrap max-h-[500px]">
+Waiting...
+      </pre>
+    </div>
+
+    <!-- QR Code Section -->
+    <div id="qrContainer" class="mt-6 hidden text-center">
+      <h3 class="text-lg font-semibold mb-2">🔗 QR Code</h3>
+      <canvas id="qrCode" class="mx-auto"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const key = "EVC";
+    const iv = CryptoJS.lib.WordArray.create(new Uint8Array(16));
+
+    function hashKey(key) {
+      return CryptoJS.SHA256(key);
+    }
+
+    function encryptAES(key, dataStr) {
+      const hashedKey = hashKey(key);
+      const encrypted = CryptoJS.AES.encrypt(dataStr, hashedKey, {
+        iv: iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      });
+      return encrypted.ciphertext.toString(CryptoJS.enc.Base64);
+    }
+
+    function decryptAES(key, message) {
+      try {
+        const hashedKey = hashKey(key);
+        const encryptedData = CryptoJS.enc.Base64.parse(message);
+        const decrypted = CryptoJS.AES.decrypt(
+          { ciphertext: encryptedData },
+          hashedKey,
+          {
+            iv: iv,
+            mode: CryptoJS.mode.CBC,
+            padding: CryptoJS.pad.Pkcs7
+          }
+        );
+        return decrypted.toString(CryptoJS.enc.Utf8);
+      } catch (err) {
+        return "Decryption error: " + err.message;
+      }
+    }
+
+    function extractEncrypted(link) {
+      try {
+        const url = new URL(link);
+        return url.hash ? decodeURIComponent(url.hash.substring(1)) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function handleEncrypt() {
+      const data = document.getElementById("encryptText").value.trim();
+      const output = document.getElementById("output");
+      const qrContainer = document.getElementById("qrContainer");
+      const qrCanvas = document.getElementById("qrCode");
+
+      if (!data) {
+        output.textContent = "Please enter some text to encrypt.";
+        qrContainer.classList.add("hidden");
+        return;
+      }
+
+      const encrypted = encryptAES(key, data);
+      const finalLink = `https://getsnapcard.com/#${encodeURIComponent(encrypted)}`;
+      output.textContent = `🔐 Encrypted Data:\n${encrypted}\n\n🔗 Shareable Link:\n${finalLink}`;
+
+      // Show QR code
+      const qr = new QRious({
+        element: qrCanvas,
+        value: finalLink,
+        size: 200,
+      });
+      qrContainer.classList.remove("hidden");
+    }
+
+    function handleDecrypt() {
+      const link = document.getElementById("decryptLink").value.trim();
+      const encryptedMessage = extractEncrypted(link);
+      const output = document.getElementById("output");
+
+      if (encryptedMessage) {
+        const decrypted = decryptAES(key, encryptedMessage);
+        output.textContent = `🔓 Decrypted Text:\n${decrypted}`;
+      } else {
+        output.textContent = "No encrypted data found in the link.";
+      }
+
+      document.getElementById("qrContainer").classList.add("hidden");
+    }
+
+    function toggleMode() {
+      const mode = document.getElementById("mode").value;
+      document.getElementById("encryptForm").classList.toggle("hidden", mode !== "encrypt");
+      document.getElementById("decryptForm").classList.toggle("hidden", mode !== "decrypt");
+      document.getElementById("output").textContent = "Waiting...";
+      document.getElementById("qrContainer").classList.add("hidden");
+    }
+
+    function copyResult() {
+      const output = document.getElementById("output").textContent;
+      if (!output || output === "Waiting...") return alert("Nothing to copy!");
+
+      navigator.clipboard.writeText(output)
+        .then(() => alert("✅ Copied to clipboard!"))
+        .catch(() => alert("❌ Failed to copy."));
+    }
+  </script>
+</body>
+</html>
