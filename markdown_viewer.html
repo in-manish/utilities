@@ -146,22 +146,26 @@
         textarea::-webkit-scrollbar-thumb:hover, #preview::-webkit-scrollbar-thumb:hover {
             background: #94a3b8; /* slate-400 */
         }
-        /* Style for active button */
-        .btn-active {
-            box-shadow: 0 0 0 2px white, 0 0 0 4px theme('colors.sky.500'); /* Example focus ring */
+        /* Style for active button: uses a specific class now */
+        .btn-mode-active {
+            /* Example: using a darker shade of the button's original color and a ring */
+            /* This will be complemented by JS adding specific color classes */
+            /* box-shadow: 0 0 0 2px white, 0 0 0 4px theme('colors.sky.600'); */
+            filter: brightness(0.85);
+            transform: translateY(1px);
         }
     </style>
 </head>
-<body class="bg-slate-200 text-slate-800 antialiased">
+<body class="bg-slate-100 text-slate-800 antialiased"> {/* Adjusted body bg for softer look */}
     <div class="container mx-auto p-3 sm:p-4 max-w-screen-2xl min-h-screen flex flex-col">
-        <header class="mb-4">
+        <header class="mb-4 py-4">
             <h1 class="text-3xl sm:text-4xl font-bold text-center text-sky-700 select-none tracking-tight">Markdown Live Editor</h1>
-            <p class="text-center text-slate-500 text-sm sm:text-base">Edit Markdown with live preview, including Mermaid diagrams.</p>
-            <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-3 my-4 sm:my-5">
-                <button id="btn-side-by-side" class="btn-mode bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75">Side-by-Side</button>
-                <button id="btn-edit-only" class="btn-mode bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-75">Editor Only</button>
-                <button id="btn-view-only" class="btn-mode bg-violet-500 hover:bg-violet-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-opacity-75">Preview Only</button>
-                <button id="btn-copy" class="bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-opacity-75">
+            <p class="text-center text-slate-600 text-sm sm:text-base mt-1">Edit Markdown with live preview, including Mermaid diagrams.</p>
+            <div id="controls-container" class="flex flex-wrap justify-center items-center gap-2 sm:gap-3 my-5 sm:my-6">
+                <button id="btn-side-by-side" class="btn-mode bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400 focus:ring-opacity-75">Side-by-Side</button>
+                <button id="btn-edit-only" class="btn-mode bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400 focus:ring-opacity-75">Editor Only</button>
+                <button id="btn-view-only" class="btn-mode bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400 focus:ring-opacity-75">Preview Only</button>
+                <button id="btn-copy" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-400 focus:ring-opacity-75">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1 -mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
                         <path d="M3 5a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm8 0H5a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V6a1 1 0 00-1-1z" />
@@ -171,23 +175,12 @@
             </div>
         </header>
 
-        <main id="main-content" class="flex flex-col sm:flex-row sm:gap-3 md:gap-4 flex-grow" style="min-height: calc(100vh - 200px);"> {/* Adjusted min-height calc */}
-            <div id="editor-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 bg-white rounded-xl shadow-xl border border-slate-300 flex flex-col">
+        <main id="main-content" class="flex flex-col sm:flex-row sm:gap-4 flex-grow" style="min-height: calc(100vh - 180px);"> {/* Adjusted min-height calc after header padding */}
+            <div id="editor-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
                 <textarea id="editor" class="w-full h-full flex-grow p-3 sm:p-4 rounded-lg focus:outline-none resize-none text-base leading-relaxed bg-transparent" placeholder="Enter Markdown here..."></textarea>
             </div>
-            <div id="preview-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 mt-2 sm:mt-0 bg-white rounded-xl shadow-xl border border-slate-300 flex flex-col">
-                <div id="preview" class="w-full h-full flex-grow p-4 sm:p-5 rounded-lg overflow-y-auto prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-sky
-                                        prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                                        prose-a:font-medium prose-a:no-underline hover:prose-a:underline
-                                        prose-blockquote:border-sky-500 prose-blockquote:text-slate-600
-                                        prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-medium
-                                        prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-pre:shadow-lg
-                                        prose-ul:list-disc prose-ol:list-decimal
-                                        prose-li:my-1
-                                        dark:prose-invert dark:prose-headings:text-slate-100 dark:prose-a:text-sky-400
-                                        dark:prose-blockquote:border-sky-400 dark:prose-blockquote:text-slate-300
-                                        dark:prose-code:bg-slate-700 dark:prose-code:text-emerald-300
-                                        dark:prose-pre:bg-slate-900 dark:prose-pre:text-slate-200">
+            <div id="preview-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 mt-3 sm:mt-0 bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+                <div id="preview" class="w-full h-full flex-grow p-4 sm:p-5 rounded-lg overflow-y-auto prose prose-sm sm:prose-base lg:prose-lg xl:prose-xl max-w-none prose-sky dark:prose-invert">
                 </div>
             </div>
         </div>
@@ -241,32 +234,30 @@
 
         function setActiveButton(activeBtn) {
             allModeButtons.forEach(btn => {
-                btn.classList.remove('btn-active', 'ring-2', 'ring-offset-2', 'ring-sky-500'); // Example active classes
-                 // More specific removal of color based active states if any
-                if (btn.id === 'btn-side-by-side') btn.classList.remove('bg-sky-700'); else btn.classList.add('bg-sky-500');
-                if (btn.id === 'btn-edit-only') btn.classList.remove('bg-emerald-700'); else btn.classList.add('bg-emerald-500');
-                if (btn.id === 'btn-view-only') btn.classList.remove('bg-violet-700'); else btn.classList.add('bg-violet-500');
+                btn.classList.remove('btn-mode-active');
+                btn.classList.remove('ring-sky-600', 'ring-2', 'ring-offset-2'); // Clear specific ring if any
             });
-            activeBtn.classList.add('btn-active', 'ring-2', 'ring-offset-2', 'ring-sky-500'); // Add general active state
-            // Darken the active button slightly
-            if (activeBtn.id === 'btn-side-by-side') activeBtn.classList.replace('bg-sky-500','bg-sky-700');
-            if (activeBtn.id === 'btn-edit-only') activeBtn.classList.replace('bg-emerald-500','bg-emerald-700');
-            if (activeBtn.id === 'btn-view-only') activeBtn.classList.replace('bg-violet-500','bg-violet-700');
+            activeBtn.classList.add('btn-mode-active');
+            activeBtn.classList.add('ring-sky-600', 'ring-2', 'ring-offset-2'); // Add a consistent ring to active
         }
 
         // Event listeners for view mode buttons
         btnSideBySide.addEventListener('click', () => {
-            editorContainer.classList.remove('hidden', 'sm:w-full', 'w-full');
-            previewContainer.classList.remove('hidden', 'sm:w-full', 'w-full');
+            editorContainer.classList.remove('hidden');
+            previewContainer.classList.remove('hidden');
 
-            editorContainer.classList.add('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
-            previewContainer.classList.add('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
+            editorContainer.classList.replace('sm:w-full', 'sm:w-1/2');
+            editorContainer.classList.replace('w-full', 'sm:w-1/2'); // Ensure sm:w-1/2 takes precedence
+            editorContainer.classList.add('w-full', 'h-1/2', 'sm:h-full');
 
-            mainContent.classList.remove('sm:flex-col');
-            mainContent.classList.add('flex-col', 'sm:flex-row'); // Default to flex-col, sm:flex-row for side-by-side
 
-            editorContainer.style.display = 'flex'; // Use flex for children of editor-container
-            previewContainer.style.display = 'flex'; // Use flex for children of preview-container
+            previewContainer.classList.replace('sm:w-full', 'sm:w-1/2');
+            previewContainer.classList.replace('w-full', 'sm:w-1/2'); // Ensure sm:w-1/2 takes precedence
+            previewContainer.classList.add('w-full', 'h-1/2', 'sm:h-full');
+
+            mainContent.classList.remove('sm:flex-col'); // if it was set by other modes
+            mainContent.classList.add('flex-col', 'sm:flex-row');
+
             setActiveButton(btnSideBySide);
             renderMarkdown();
         });
@@ -275,13 +266,10 @@
             editorContainer.classList.remove('hidden', 'sm:w-1/2', 'h-1/2');
             editorContainer.classList.add('w-full', 'h-full');
             previewContainer.classList.add('hidden');
-            previewContainer.classList.remove('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
 
             mainContent.classList.remove('sm:flex-row');
-            mainContent.classList.add('flex-col'); // Always flex-col for editor only
+            mainContent.classList.add('flex-col');
 
-            editorContainer.style.display = 'flex';
-            previewContainer.style.display = 'none';
             setActiveButton(btnEditOnly);
         });
 
@@ -289,13 +277,10 @@
             previewContainer.classList.remove('hidden', 'sm:w-1/2', 'h-1/2');
             previewContainer.classList.add('w-full', 'h-full');
             editorContainer.classList.add('hidden');
-            editorContainer.classList.remove('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
 
             mainContent.classList.remove('sm:flex-row');
-            mainContent.classList.add('flex-col'); // Always flex-col for view only
+            mainContent.classList.add('flex-col');
 
-            editorContainer.style.display = 'none';
-            previewContainer.style.display = 'flex';
             setActiveButton(btnViewOnly);
             renderMarkdown();
         });
