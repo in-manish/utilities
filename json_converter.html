@@ -116,7 +116,44 @@
                 // console.log("Direct JSON.parse failed. Attempting fixes...");
             }
 
-            // Attempt 2: Common Pythonisms to JSON
+            // Attempt 2: Pre-processing and fixes
+
+            // Step -1: Strip Comments (do this early)
+            // Note: Regex for comments can be tricky if comments can appear inside strings
+            // that themselves are not yet properly quoted. These are best-effort.
+            try {
+                // Remove single-line comments //
+                processedStr = processedStr.replace(/\/\/.*/g, '');
+                // Remove multi-line comments /* ... */
+                // The [^] character set matches any character including newlines.
+                // Alternatively, [\s\S] can be used.
+                processedStr = processedStr.replace(/\/\*[^]*?\*\//g, '');
+            } catch(e) {
+                // console.warn("Regex for stripping comments might have issues:", e);
+            }
+
+            // Re-trim after potentially removing comments that were on their own lines.
+            processedStr = processedStr.trim();
+
+
+            // Step 0: Handle Numeric Keys (before quote conversions)
+            // e.g., {123: "value"} -> {"123": "value"}
+            // Looks for numbers as keys, not preceded by a quote.
+            try {
+                processedStr = processedStr.replace(/([{,]\s*)([0-9]+)(\s*:)/g, '$1"$2"$3');
+            } catch (e) {
+                // console.warn("Regex for numeric keys might have issues:", e);
+            }
+
+            // Step 0.5: Handle Simple Unquoted Alphanumeric Keys (after numeric keys, before general quote conversion)
+            // e.g. {key: "value"} -> {"key": "value"}
+            // Looks for alphanumeric keys (starting with a letter or _, followed by letters, numbers, or _), not preceded by a quote.
+            try {
+                processedStr = processedStr.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');
+            } catch (e) {
+                // console.warn("Regex for unquoted alphanumeric keys might have issues:", e);
+            }
+
             // Replace Python booleans/None
             processedStr = processedStr.replace(/\bTrue\b/g, 'true')
                                      .replace(/\bFalse\b/g, 'false')
@@ -133,14 +170,31 @@
             // And replaces it with " (double quote) \1 " (double quote)
             // This is applied iteratively to handle nested structures to some extent.
             // This regex is simplified and might fail on strings containing escaped single quotes.
+            // It's extremely difficult to get right with only regex for all cases.
+            // The strategy is to be conservative and try to only change what's likely a delimiter.
             try {
-                 // Convert single-quoted keys and values to double-quoted
-                processedStr = processedStr.replace(/'([^']*)'/g, '"$1"');
+                // Convert single-quoted strings that are likely entire values or keys.
+                // Matches:
+                // - '...' directly preceded by a colon (value)
+                // - '...' directly followed by a colon (key)
+                // - '...' directly preceded by [ or , (array value)
+                // - '...' directly followed by ] or , (array value)
+                // This tries to avoid changing ' in "it's a string" if "it's a string" is already double quoted.
 
-                // Attempt to fix keys that might still be single quoted if they were part of a larger structure
-                // e.g. {'key': "value"} -> {"key": "value"}
-                // This specifically targets keys in objects: 'key':
-                 processedStr = processedStr.replace(/([{,]\s*)'([^']*)'\s*:/g, '$1"$2":');
+                // Step 1: Replace single quotes around keys: 'key': -> "key":
+                processedStr = processedStr.replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3');
+                // Step 2: Replace single quotes around values: :'value' -> :"value"
+                // This needs to be careful not to mess up if the value itself contains single quotes and is complex.
+                // A common pattern is `:'text'` or `['text']`
+                processedStr = processedStr.replace(/(\:\s*)'([^']+)'(\s*[,}\]])/g, '$1"$2"$3'); // For object values
+                processedStr = processedStr.replace(/([\[,]\s*)'([^']+)'(\s*[,\]])/g, '$1"$2"$3'); // For array values
+
+
+                // Fallback for very simple cases if the above are too restrictive,
+                // but this is more risky for internal quotes.
+                // This was the previous broader approach. We might only enable if above fails or is insufficient.
+                // processedStr = processedStr.replace(/'([^']*)'/g, '"$1"');
+
 
             } catch (e) {
                 // console.warn("Regex for quotes might have issues:", e);
@@ -148,9 +202,16 @@
 
 
             // Attempt to remove trailing commas from arrays and objects
-            // Regex for trailing commas (simplistic, might not cover all edge cases)
-            // Removes comma if it's followed by } or ] (and optional whitespace)
-            processedStr = processedStr.replace(/,\s*([}\]])/g, '$1');
+            // Apply iteratively to handle nested structures or multiple trailing commas.
+            let previousStr;
+            let iterations = 0;
+            const maxIterations = 10; // Safety break for potential infinite loops on weird input
+            do {
+                previousStr = processedStr;
+                // Removes comma if it's followed by } or ] (and optional whitespace)
+                processedStr = processedStr.replace(/,\s*([}\]])/g, '$1');
+                iterations++;
+            } while (previousStr !== processedStr && iterations < maxIterations);
 
             try {
                 return JSON.parse(processedStr);
