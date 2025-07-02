@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Converter Utility</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        textarea { width: 98%; min-height: 150px; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 15px; font-family: monospace; font-size: 14px; }
+        input[type="file"] { margin-bottom: 15px; display: block; }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        button:hover { background-color: #0056b3; }
+        .output-area, .error-area {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            background-color: #e9ecef;
+        }
+        .error-area { border-color: #dc3545; color: #721c24; background-color: #f8d7da; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSON Converter</h1>
+
+        <label for="jsonInput">Paste your JSON-like string here:</label>
+        <textarea id="jsonInput" placeholder="e.g., {'name': 'John', 'age': 30, 'valid': True} or [{&quot;id&quot;: 1}]"></textarea>
+
+        <label for="fileInput">Or upload a file:</label>
+        <input type="file" id="fileInput" accept=".json,.txt,application/json">
+
+        <button id="convertButton">Convert to JSON</button>
+
+        <label for="output">Formatted JSON Output:</label>
+        <textarea id="output" readonly placeholder="Converted JSON will appear here..."></textarea>
+
+        <div id="errorDisplay" class="error-area hidden">
+            <p><strong>Error:</strong> <span id="errorMessage"></span></p>
+        </div>
+    </div>
+
+    <script>
+        const jsonInput = document.getElementById('jsonInput');
+        const fileInput = document.getElementById('fileInput');
+        const convertButton = document.getElementById('convertButton');
+        const outputArea = document.getElementById('output');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const errorMessageSpan = document.getElementById('errorMessage');
+
+        convertButton.addEventListener('click', async () => {
+            outputArea.value = '';
+            errorDisplay.classList.add('hidden');
+            errorMessageSpan.textContent = '';
+
+            let inputText = jsonInput.value.trim();
+
+            if (fileInput.files.length > 0) {
+                try {
+                    inputText = await readFileContent(fileInput.files[0]);
+                } catch (err) {
+                    showError(`Error reading file: ${err.message}`);
+                    return;
+                }
+            }
+
+            if (!inputText) {
+                showError('No input provided. Please paste a string or select a file.');
+                return;
+            }
+
+            try {
+                const result = processInputString(inputText);
+                const prettyJson = JSON.stringify(result, null, 4);
+                outputArea.value = prettyJson;
+            } catch (err) {
+                showError(err.message);
+            }
+        });
+
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => resolve(event.target.result);
+                reader.onerror = (error) => reject(error);
+                reader.readAsText(file);
+            });
+        }
+
+        function showError(message) {
+            errorMessageSpan.textContent = message;
+            errorDisplay.classList.remove('hidden');
+        }
+
+        function processInputString(inputStr) {
+            let processedStr = inputStr.trim();
+
+            // Attempt 1: Direct JSON.parse
+            try {
+                return JSON.parse(processedStr);
+            } catch (e) {
+                // console.log("Direct JSON.parse failed. Attempting fixes...");
+            }
+
+            // Attempt 2: Common Pythonisms to JSON
+            // Replace Python booleans/None
+            processedStr = processedStr.replace(/\bTrue\b/g, 'true')
+                                     .replace(/\bFalse\b/g, 'false')
+                                     .replace(/\bNone\b/g, 'null');
+
+            // Replace single quotes with double quotes for keys and string values
+            // This is a complex task with regex and can be error-prone.
+            // A more robust solution would involve a proper tokenizer/parser,
+            // but for a single-file solution, we'll use a regex that tries its best.
+            // It looks for:
+            //  - ' (single quote)
+            //  - followed by one or more characters that are not single quotes or backslashes (\1)
+            //  - ' (single quote)
+            // And replaces it with " (double quote) \1 " (double quote)
+            // This is applied iteratively to handle nested structures to some extent.
+            // This regex is simplified and might fail on strings containing escaped single quotes.
+            try {
+                 // Convert single-quoted keys and values to double-quoted
+                processedStr = processedStr.replace(/'([^']*)'/g, '"$1"');
+
+                // Attempt to fix keys that might still be single quoted if they were part of a larger structure
+                // e.g. {'key': "value"} -> {"key": "value"}
+                // This specifically targets keys in objects: 'key':
+                 processedStr = processedStr.replace(/([{,]\s*)'([^']*)'\s*:/g, '$1"$2":');
+
+            } catch (e) {
+                // console.warn("Regex for quotes might have issues:", e);
+            }
+
+
+            // Attempt to remove trailing commas from arrays and objects
+            // Regex for trailing commas (simplistic, might not cover all edge cases)
+            // Removes comma if it's followed by } or ] (and optional whitespace)
+            processedStr = processedStr.replace(/,\s*([}\]])/g, '$1');
+
+            try {
+                return JSON.parse(processedStr);
+            } catch (e) {
+                throw new Error(`Could not parse input as JSON after attempting fixes. Original error: ${e.message}. Processed string was: ${processedStr.substring(0,100)}...`);
+            }
+        }
+
+    </script>
+</body>
+</html>
