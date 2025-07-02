@@ -4,46 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Markdown Viewer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>
       tailwind.config = {
+        darkMode: 'media', // or 'class'
         theme: {
           extend: {
+            colors: {
+                sky: {
+                    50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8',
+                    500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e'
+                },
+                amber: {
+                    50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24',
+                    500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f'
+                },
+                emerald: {
+                    50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399',
+                    500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b'
+                },
+                violet: {
+                    50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa',
+                    500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95'
+                },
+                slate: { // Adding slate for body text and backgrounds
+                    50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8',
+                    500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a'
+                }
+            },
             typography: ({ theme }) => ({
               DEFAULT: {
                 css: {
+                  '--tw-prose-body': theme('colors.slate[700]'),
+                  '--tw-prose-headings': theme('colors.slate[800]'),
+                  '--tw-prose-lead': theme('colors.slate[600]'),
+                  '--tw-prose-links': theme('colors.sky[600]'),
+                  '--tw-prose-bold': theme('colors.slate[800]'),
+                  '--tw-prose-counters': theme('colors.slate[500]'),
+                  '--tw-prose-bullets': theme('colors.sky[500]'),
+                  '--tw-prose-hr': theme('colors.slate[300]'),
+                  '--tw-prose-quotes': theme('colors.slate[600]'),
+                  '--tw-prose-quote-borders': theme('colors.sky[300]'),
+                  '--tw-prose-captions': theme('colors.slate[500]'),
+                  '--tw-prose-code': theme('colors.emerald[700]'),
+                  '--tw-prose-pre-code': theme('colors.emerald[700]'),
+                  '--tw-prose-pre-bg': theme('colors.slate[100]'),
+                  '--tw-prose-th-borders': theme('colors.slate[300]'),
+                  '--tw-prose-td-borders': theme('colors.slate[200]'),
+                  '--tw-prose-invert-body': theme('colors.slate[300]'),
+                  '--tw-prose-invert-headings': theme('colors.white'),
+                  '--tw-prose-invert-lead': theme('colors.slate[400]'),
+                  '--tw-prose-invert-links': theme('colors.sky[400]'),
+                  '--tw-prose-invert-bold': theme('colors.white'),
+                  '--tw-prose-invert-counters': theme('colors.slate[400]'),
+                  '--tw-prose-invert-bullets': theme('colors.sky[400]'),
+                  '--tw-prose-invert-hr': theme('colors.slate[700]'),
+                  '--tw-prose-invert-quotes': theme('colors.slate[300]'),
+                  '--tw-prose-invert-quote-borders': theme('colors.sky[700]'),
+                  '--tw-prose-invert-captions': theme('colors.slate[400]'),
+                  '--tw-prose-invert-code': theme('colors.emerald[300]'),
+                  '--tw-prose-invert-pre-code': theme('colors.emerald[300]'),
+                  '--tw-prose-invert-pre-bg': theme('colors.slate[800]'),
+                  '--tw-prose-invert-th-borders': theme('colors.slate[700]'),
+                  '--tw-prose-invert-td-borders': theme('colors.slate[800]'),
+                  // Customizations for specific elements
+                  ul: {
+                    paddingLeft: theme('spacing.5'), // Adjust list indentation
+                  },
+                  ol: {
+                    paddingLeft: theme('spacing.5'),
+                  },
+                  'ul > li::marker': { // More specific bullet styling if needed
+                    // color: theme('colors.sky[500]'), // Already handled by --tw-prose-bullets
+                  },
                   pre: {
-                    backgroundColor: theme('colors.gray.100'),
-                    color: theme('colors.gray.800'),
                     padding: theme('spacing.4'),
-                    borderRadius: theme('borderRadius.md'),
-                    overflowX: 'auto',
+                    borderRadius: theme('borderRadius.lg'), // Slightly larger radius
+                    boxShadow: theme('boxShadow.md'),
                   },
-                  code: {
-                    backgroundColor: theme('colors.gray.200'),
+                  code: { // For inline code
+                    fontWeight: '500',
                     padding: '0.2em 0.4em',
-                    margin: '0',
-                    fontSize: '85%',
-                    borderRadius: '3px',
+                    borderRadius: theme('borderRadius.sm'),
                   },
-                  'pre code': {
-                    backgroundColor: 'transparent',
-                    padding: '0',
-                    margin: '0',
-                    fontSize: 'inherit',
-                    borderRadius: '0',
+                  'code::before': { content: '"" !important' }, // Remove unwanted quotes around inline code
+                  'code::after': { content: '"" !important' },
+                  blockquote: {
+                    fontWeight: '500',
+                    fontStyle: 'italic',
+                    paddingLeft: theme('spacing.4'),
+                    borderLeftWidth: theme('borderWidth.4'),
                   },
-                  '.mermaid': {
+                  '.mermaid': { // Ensure mermaid diagrams are centered and responsive
                     display: 'flex',
                     justifyContent: 'center',
-                    margin: 'auto',
+                    margin: '1.5em auto', // More vertical margin
+                    backgroundColor: theme('colors.white'), // Give mermaid a card-like bg
+                    padding: theme('spacing.4'),
+                    borderRadius: theme('borderRadius.md'),
+                    boxShadow: theme('boxShadow.sm'),
                   },
                   '.mermaid svg': {
-                    maxWidth: '100%', // Ensure mermaid diagrams are responsive
+                    maxWidth: '100%',
                     height: 'auto',
                   },
                 },
               },
+              // Add dark mode prose styles if desired
+              dark: { // This would be for prose-invert
+                css: {
+                    // --tw-prose-bullets will use --tw-prose-invert-bullets due to how prose works
+                }
+              }
             }),
           }
         }
@@ -51,47 +123,72 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
     <style>
-        /* Custom scrollbar for webkit browsers */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .prose code, #editor { /* Ensure editor also uses a nice mono font */
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom scrollbar for webkit browsers - more subtle */
         textarea::-webkit-scrollbar, #preview::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
+            height: 6px;
         }
         textarea::-webkit-scrollbar-track, #preview::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: transparent; /* Make track invisible */
         }
         textarea::-webkit-scrollbar-thumb, #preview::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 3px;
         }
         textarea::-webkit-scrollbar-thumb:hover, #preview::-webkit-scrollbar-thumb:hover {
-            background: #555;
+            background: #94a3b8; /* slate-400 */
         }
-
-        /* Basic styling for mermaid diagrams (fallback if prose not working as expected) */
-        .mermaid svg {
-            display: block; /* Ensure it takes up block space */
-            margin: 1em auto; /* Center it with some margin */
+        /* Style for active button */
+        .btn-active {
+            box-shadow: 0 0 0 2px white, 0 0 0 4px theme('colors.sky.500'); /* Example focus ring */
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 अंतराफलक-regular">
-    <div class="container mx-auto p-2 sm:p-4 max-w-none">
-        <header class="mb-3 sm:mb-4">
-            <h1 class="text-2xl sm:text-3xl font-bold text-center text-sky-700 select-none">Markdown Editor & Previewer</h1>
-            <div class="flex flex-wrap justify-center gap-1 sm:gap-2 my-3 sm:my-4">
-                <button id="btn-side-by-side" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Side-by-Side</button>
-                <button id="btn-edit-only" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Editor Only</button>
-                <button id="btn-view-only" class="bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Preview Only</button>
-                <button id="btn-copy" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Copy Markdown</button>
+<body class="bg-slate-200 text-slate-800 antialiased">
+    <div class="container mx-auto p-3 sm:p-4 max-w-screen-2xl min-h-screen flex flex-col">
+        <header class="mb-4">
+            <h1 class="text-3xl sm:text-4xl font-bold text-center text-sky-700 select-none tracking-tight">Markdown Live Editor</h1>
+            <p class="text-center text-slate-500 text-sm sm:text-base">Edit Markdown with live preview, including Mermaid diagrams.</p>
+            <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-3 my-4 sm:my-5">
+                <button id="btn-side-by-side" class="btn-mode bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75">Side-by-Side</button>
+                <button id="btn-edit-only" class="btn-mode bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-75">Editor Only</button>
+                <button id="btn-view-only" class="btn-mode bg-violet-500 hover:bg-violet-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-opacity-75">Preview Only</button>
+                <button id="btn-copy" class="bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded-lg text-sm sm:text-base transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-opacity-75">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1 -mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                        <path d="M3 5a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm8 0H5a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V6a1 1 0 00-1-1z" />
+                    </svg>
+                    Copy Markdown
+                </button>
             </div>
         </header>
 
-        <main id="main-content" class="flex flex-col sm:flex-row sm:space-x-2 md:space-x-4" style="height: calc(100vh - 120px);">
-            <div id="editor-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1">
-                <textarea id="editor" class="w-full h-full p-2 sm:p-3 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 resize-none text-sm bg-white" placeholder="Enter Markdown here..."></textarea>
+        <main id="main-content" class="flex flex-col sm:flex-row sm:gap-3 md:gap-4 flex-grow" style="min-height: calc(100vh - 200px);"> {/* Adjusted min-height calc */}
+            <div id="editor-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 bg-white rounded-xl shadow-xl border border-slate-300 flex flex-col">
+                <textarea id="editor" class="w-full h-full flex-grow p-3 sm:p-4 rounded-lg focus:outline-none resize-none text-base leading-relaxed bg-transparent" placeholder="Enter Markdown here..."></textarea>
             </div>
-            <div id="preview-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 mt-2 sm:mt-0">
-                <div id="preview" class="w-full h-full p-3 sm:p-4 border border-slate-300 rounded-md shadow-sm bg-white overflow-y-auto prose prose-sm sm:prose-base lg:prose-lg xl:prose-xl max-w-none"></div>
+            <div id="preview-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 mt-2 sm:mt-0 bg-white rounded-xl shadow-xl border border-slate-300 flex flex-col">
+                <div id="preview" class="w-full h-full flex-grow p-4 sm:p-5 rounded-lg overflow-y-auto prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-sky
+                                        prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+                                        prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                                        prose-blockquote:border-sky-500 prose-blockquote:text-slate-600
+                                        prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-medium
+                                        prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-pre:shadow-lg
+                                        prose-ul:list-disc prose-ol:list-decimal
+                                        prose-li:my-1
+                                        dark:prose-invert dark:prose-headings:text-slate-100 dark:prose-a:text-sky-400
+                                        dark:prose-blockquote:border-sky-400 dark:prose-blockquote:text-slate-300
+                                        dark:prose-code:bg-slate-700 dark:prose-code:text-emerald-300
+                                        dark:prose-pre:bg-slate-900 dark:prose-pre:text-slate-200">
+                </div>
             </div>
         </div>
     </div>
@@ -140,44 +237,67 @@
         // Event listener for editor input
         editor.addEventListener('input', renderMarkdown);
 
+        const allModeButtons = document.querySelectorAll('.btn-mode');
+
+        function setActiveButton(activeBtn) {
+            allModeButtons.forEach(btn => {
+                btn.classList.remove('btn-active', 'ring-2', 'ring-offset-2', 'ring-sky-500'); // Example active classes
+                 // More specific removal of color based active states if any
+                if (btn.id === 'btn-side-by-side') btn.classList.remove('bg-sky-700'); else btn.classList.add('bg-sky-500');
+                if (btn.id === 'btn-edit-only') btn.classList.remove('bg-emerald-700'); else btn.classList.add('bg-emerald-500');
+                if (btn.id === 'btn-view-only') btn.classList.remove('bg-violet-700'); else btn.classList.add('bg-violet-500');
+            });
+            activeBtn.classList.add('btn-active', 'ring-2', 'ring-offset-2', 'ring-sky-500'); // Add general active state
+            // Darken the active button slightly
+            if (activeBtn.id === 'btn-side-by-side') activeBtn.classList.replace('bg-sky-500','bg-sky-700');
+            if (activeBtn.id === 'btn-edit-only') activeBtn.classList.replace('bg-emerald-500','bg-emerald-700');
+            if (activeBtn.id === 'btn-view-only') activeBtn.classList.replace('bg-violet-500','bg-violet-700');
+        }
+
         // Event listeners for view mode buttons
         btnSideBySide.addEventListener('click', () => {
-            editorContainer.classList.remove('hidden', 'sm:w-full');
-            previewContainer.classList.remove('hidden', 'sm:w-full');
-            editorContainer.classList.add('sm:w-1/2');
-            previewContainer.classList.add('sm:w-1/2');
-            mainContent.classList.remove('flex-col', 'sm:flex-col');
-            mainContent.classList.add('sm:flex-row');
-            // Ensure containers are visible on small screens if they were hidden
-            editorContainer.classList.remove('hidden');
-            previewContainer.classList.remove('hidden');
-             // Adjust height for mobile side-by-side (stacked)
-            editorContainer.classList.add('h-1/2', 'sm:h-full');
-            previewContainer.classList.add('h-1/2', 'sm:h-full');
-            renderMarkdown(); // Re-render in case mermaid diagrams need specific container size
+            editorContainer.classList.remove('hidden', 'sm:w-full', 'w-full');
+            previewContainer.classList.remove('hidden', 'sm:w-full', 'w-full');
+
+            editorContainer.classList.add('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
+            previewContainer.classList.add('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
+
+            mainContent.classList.remove('sm:flex-col');
+            mainContent.classList.add('flex-col', 'sm:flex-row'); // Default to flex-col, sm:flex-row for side-by-side
+
+            editorContainer.style.display = 'flex'; // Use flex for children of editor-container
+            previewContainer.style.display = 'flex'; // Use flex for children of preview-container
+            setActiveButton(btnSideBySide);
+            renderMarkdown();
         });
 
         btnEditOnly.addEventListener('click', () => {
-            editorContainer.classList.remove('hidden', 'sm:w-1/2');
-            editorContainer.classList.add('sm:w-full', 'w-full');
+            editorContainer.classList.remove('hidden', 'sm:w-1/2', 'h-1/2');
+            editorContainer.classList.add('w-full', 'h-full');
             previewContainer.classList.add('hidden');
-            previewContainer.classList.remove('sm:w-1/2');
+            previewContainer.classList.remove('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
+
             mainContent.classList.remove('sm:flex-row');
-            mainContent.classList.add('flex-col', 'sm:flex-col');
-             editorContainer.classList.remove('h-1/2');
-            editorContainer.classList.add('h-full');
+            mainContent.classList.add('flex-col'); // Always flex-col for editor only
+
+            editorContainer.style.display = 'flex';
+            previewContainer.style.display = 'none';
+            setActiveButton(btnEditOnly);
         });
 
         btnViewOnly.addEventListener('click', () => {
-            previewContainer.classList.remove('hidden', 'sm:w-1/2');
-            previewContainer.classList.add('sm:w-full', 'w-full');
+            previewContainer.classList.remove('hidden', 'sm:w-1/2', 'h-1/2');
+            previewContainer.classList.add('w-full', 'h-full');
             editorContainer.classList.add('hidden');
-            editorContainer.classList.remove('sm:w-1/2');
+            editorContainer.classList.remove('sm:w-1/2', 'w-full', 'h-1/2', 'sm:h-full');
+
             mainContent.classList.remove('sm:flex-row');
-            mainContent.classList.add('flex-col', 'sm:flex-col');
-            previewContainer.classList.remove('h-1/2');
-            previewContainer.classList.add('h-full');
-            renderMarkdown(); // Re-render in case mermaid diagrams need specific container size
+            mainContent.classList.add('flex-col'); // Always flex-col for view only
+
+            editorContainer.style.display = 'none';
+            previewContainer.style.display = 'flex';
+            setActiveButton(btnViewOnly);
+            renderMarkdown();
         });
 
         // Event listener for copy button
