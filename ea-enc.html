@@ -14,6 +14,8 @@
 
   <!-- QRious for QR Code Generation -->
   <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+  <!-- jsQR for QR Code Scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
   <div class="bg-white w-full max-w-2xl p-8 rounded-lg shadow-lg">
@@ -32,6 +34,13 @@
     <div id="encryptForm">
       <label class="block mb-2 font-medium">Text to Encrypt</label>
       <textarea id="encryptText" rows="4" placeholder="Enter text or JSON to encrypt..." class="w-full p-3 border rounded resize-none"></textarea>
+
+      <div class="mt-4 grid grid-cols-2 gap-2">
+        <input type="file" id="qrFileInputEncrypt" accept="image/*" class="hidden"/>
+        <label for="qrFileInputEncrypt" class="bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300 text-center cursor-pointer">📁 Upload QR</label>
+        <button id="scanQRButtonEncrypt" class="bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300">📷 Scan QR</button>
+      </div>
+
       <button onclick="handleEncrypt()" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full">
         🔒 Encrypt
       </button>
@@ -41,9 +50,23 @@
     <div id="decryptForm" class="hidden">
       <label class="block mb-2 font-medium">Encrypted Link</label>
       <input id="decryptLink" type="text" placeholder="Paste encrypted link here..." class="w-full p-3 border rounded" />
+
+      <div class="mt-4 grid grid-cols-2 gap-2">
+        <input type="file" id="qrFileInputDecrypt" accept="image/*" class="hidden"/>
+        <label for="qrFileInputDecrypt" class="bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300 text-center cursor-pointer">📁 Upload QR</label>
+        <button id="scanQRButtonDecrypt" class="bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300">📷 Scan QR</button>
+      </div>
+
       <button onclick="handleDecrypt()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 w-full">
         🔓 Decrypt
       </button>
+    </div>
+
+    <!-- QR Code Scanner Video/Canvas -->
+    <div id="qrScannerUI" class="hidden mt-4">
+      <video id="qrVideo" playsinline class="w-full max-h-72 border rounded"></video>
+      <canvas id="qrCanvasInput" class="hidden"></canvas>
+      <button id="cancelScanButton" class="mt-2 bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 w-full">Cancel Scan</button>
     </div>
 
     <!-- Result -->
@@ -67,6 +90,17 @@ Waiting...
   <script>
     const key = "EVC";
     const iv = CryptoJS.lib.WordArray.create(new Uint8Array(16));
+
+    // QR Scanner Elements
+    const qrVideo = document.getElementById("qrVideo");
+    const qrCanvasInput = document.getElementById("qrCanvasInput");
+    const qrCanvasInputCtx = qrCanvasInput.getContext("2d");
+    const qrScannerUI = document.getElementById("qrScannerUI");
+    const cancelScanButton = document.getElementById("cancelScanButton");
+
+    let currentStream;
+    let currentScanTargetInputId;
+    let animationFrameId;
 
     function hashKey(key) {
       return CryptoJS.SHA256(key);
@@ -156,6 +190,7 @@ Waiting...
       document.getElementById("decryptForm").classList.toggle("hidden", mode !== "decrypt");
       document.getElementById("output").textContent = "Waiting...";
       document.getElementById("qrContainer").classList.add("hidden");
+      stopCameraScan(); // Ensure camera is off if mode changes
     }
 
     function copyResult() {
@@ -166,6 +201,117 @@ Waiting...
         .then(() => alert("✅ Copied to clipboard!"))
         .catch(() => alert("❌ Failed to copy."));
     }
+
+    // --- QR Scanning Logic ---
+
+    function processQRImage(file, targetInputId) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          qrCanvasInput.width = img.width;
+          qrCanvasInput.height = img.height;
+          qrCanvasInputCtx.drawImage(img, 0, 0, img.width, img.height);
+          try {
+            const imageData = qrCanvasInputCtx.getImageData(0, 0, img.width, img.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert",
+            });
+            if (code) {
+              document.getElementById(targetInputId).value = code.data;
+              alert("✅ QR Code decoded successfully!");
+            } else {
+              alert("❌ Could not decode QR Code from image.");
+            }
+          } catch (err) {
+            console.error("jsQR error:", err);
+            alert("❌ Error decoding QR code: " + err.message);
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function tickScan() {
+      if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+        qrCanvasInput.height = qrVideo.videoHeight;
+        qrCanvasInput.width = qrVideo.videoWidth;
+        qrCanvasInputCtx.drawImage(qrVideo, 0, 0, qrCanvasInput.width, qrCanvasInput.height);
+        try {
+          const imageData = qrCanvasInputCtx.getImageData(0, 0, qrCanvasInput.width, qrCanvasInput.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+          if (code) {
+            document.getElementById(currentScanTargetInputId).value = code.data;
+            alert("✅ QR Code detected!");
+            stopCameraScan();
+            return; // Exit loop
+          }
+        } catch (err) {
+          console.error("jsQR error during video scan:", err);
+          // Potentially show a transient error to the user, but avoid spamming alerts
+        }
+      }
+      animationFrameId = requestAnimationFrame(tickScan);
+    }
+
+    function startCameraScan(targetInputId) {
+      currentScanTargetInputId = targetInputId;
+      qrScannerUI.classList.remove("hidden");
+
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: "environment" } })
+        .then(function (stream) {
+          currentStream = stream;
+          qrVideo.srcObject = stream;
+          qrVideo.setAttribute("playsinline", true); // Required for iOS
+          qrVideo.play();
+          animationFrameId = requestAnimationFrame(tickScan);
+        })
+        .catch(function (err) {
+          console.error("Camera access error:", err);
+          alert("❌ Could not access camera: " + err.message);
+          qrScannerUI.classList.add("hidden");
+        });
+    }
+
+    function stopCameraScan() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      if (currentStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+        currentStream = null;
+      }
+      qrVideo.srcObject = null;
+      qrScannerUI.classList.add("hidden");
+      // Clear the canvas
+      qrCanvasInputCtx.clearRect(0,0,qrCanvasInput.width, qrCanvasInput.height);
+    }
+
+    cancelScanButton.addEventListener('click', stopCameraScan);
+
+    // --- Attach Event Listeners for QR Inputs ---
+    // Encrypt Form QR Listeners
+    document.getElementById('qrFileInputEncrypt').addEventListener('change', function(event) {
+      processQRImage(event.target.files[0], 'encryptText');
+    });
+    document.getElementById('scanQRButtonEncrypt').addEventListener('click', function() {
+      startCameraScan('encryptText');
+    });
+
+    // Decrypt Form QR Listeners
+    document.getElementById('qrFileInputDecrypt').addEventListener('change', function(event) {
+      processQRImage(event.target.files[0], 'decryptLink');
+    });
+    document.getElementById('scanQRButtonDecrypt').addEventListener('click', function() {
+      startCameraScan('decryptLink');
+    });
+
   </script>
 </body>
 </html>
