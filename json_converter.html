@@ -52,6 +52,11 @@
         <div id="errorDisplay" class="error-area hidden">
             <p><strong>Error:</strong> <span id="errorMessage"></span></p>
         </div>
+
+        <div id="warningDisplay" class="warning-area hidden" style="margin-top: 15px; border-color: #ffc107; color: #856404; background-color: #fff3cd;">
+            <p><strong>Warnings:</strong></p>
+            <ul id="warningMessage" style="margin-top: 5px; padding-left: 20px;"></ul>
+        </div>
     </div>
 
     <script>
@@ -61,11 +66,19 @@
         const outputArea = document.getElementById('output');
         const errorDisplay = document.getElementById('errorDisplay');
         const errorMessageSpan = document.getElementById('errorMessage');
+        // Assuming a similar structure for warnings, or modify to integrate warnings differently
+        const warningDisplay = document.getElementById('warningDisplay'); // Need to add this to HTML
+        const warningMessageSpan = document.getElementById('warningMessage'); // Need to add this to HTML
+
+        let warnings = [];
 
         convertButton.addEventListener('click', async () => {
             outputArea.value = '';
             errorDisplay.classList.add('hidden');
             errorMessageSpan.textContent = '';
+            warningDisplay.classList.add('hidden'); // Hide warnings initially
+            warningMessageSpan.innerHTML = ''; // Clear previous warnings
+            warnings = []; // Reset warnings array
 
             let inputText = jsonInput.value.trim();
 
@@ -84,13 +97,27 @@
             }
 
             try {
-                const result = processInputString(inputText);
+                const result = processInputString(inputText); // warnings array is populated here
                 const prettyJson = JSON.stringify(result, null, 4);
                 outputArea.value = prettyJson;
+
+                if (warnings.length > 0) {
+                    showWarnings();
+                }
             } catch (err) {
                 showError(err.message);
             }
         });
+
+        function showWarnings() {
+            warningMessageSpan.innerHTML = ''; // Clear previous warnings
+            warnings.forEach(warning => {
+                const li = document.createElement('li');
+                li.textContent = warning;
+                warningMessageSpan.appendChild(li);
+            });
+            warningDisplay.classList.remove('hidden');
+        }
 
         function readFileContent(file) {
             return new Promise((resolve, reject) => {
@@ -124,6 +151,8 @@
             try {
                 // Remove single-line comments //
                 processedStr = processedStr.replace(/\/\/.*/g, '');
+                // Remove Python-style # comments
+                processedStr = processedStr.replace(/#.*/g, '');
                 // Remove multi-line comments /* ... */
                 // The [^] character set matches any character including newlines.
                 // Alternatively, [\s\S] can be used.
@@ -158,6 +187,45 @@
             processedStr = processedStr.replace(/\bTrue\b/g, 'true')
                                      .replace(/\bFalse\b/g, 'false')
                                      .replace(/\bNone\b/g, 'null');
+
+            // Step 0.7: Handle Boolean Literals as Keys (after True/False -> true/false conversion)
+            // e.g. {true: "value"} -> {"true": "value"}
+            try {
+                processedStr = processedStr.replace(/([{,]\s*)(true|false)(\s*:)/g, '$1"$2"$3');
+            } catch (e) {
+                // console.warn("Regex for boolean keys might have issues:", e);
+            }
+
+            // Step 0.8: Convert Python-style Tuples to Arrays (Heuristic)
+            // This is a best-effort conversion. It might be overly aggressive or miss complex cases.
+            // It targets balanced parentheses containing what might be tuple elements.
+            // This should happen before general quote changes if tuples contain strings that need quoting.
+            // However, keys and booleans should already be handled.
+            try {
+                // Iteratively replace innermost simple tuples first to help with nesting
+                let previousTupleStr;
+                let tupleIterations = 0;
+                const maxTupleIterations = 10; // Safety break
+
+                do {
+                    previousTupleStr = processedStr;
+                    // Matches `( element, element )` or `()` or `(element)`
+                    // where elements are simple (not containing parentheses themselves for this specific regex pass)
+                    // This is a simplified regex for balanced parentheses with simple content
+                    processedStr = processedStr.replace(/\(\s*([^()]*?)\s*\)/g, '[$1]');
+                    tupleIterations++;
+                } while (previousTupleStr !== processedStr && tupleIterations < maxTupleIterations);
+
+            } catch (e) {
+                // console.warn("Regex for tuple conversion might have issues:", e);
+            }
+
+            // Step 0.9: Handle NaN and Infinity (Convert to null, add warning)
+            const nanInfinityRegex = /\b(NaN|Infinity|-Infinity)\b/g;
+            if (nanInfinityRegex.test(processedStr)) {
+                warnings.push("Converted 'NaN', 'Infinity', or '-Infinity' to 'null'. These are not valid JSON numbers.");
+                processedStr = processedStr.replace(nanInfinityRegex, 'null');
+            }
 
             // Replace single quotes with double quotes for keys and string values
             // This is a complex task with regex and can be error-prone.
