@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            typography: ({ theme }) => ({
+              DEFAULT: {
+                css: {
+                  pre: {
+                    backgroundColor: theme('colors.gray.100'),
+                    color: theme('colors.gray.800'),
+                    padding: theme('spacing.4'),
+                    borderRadius: theme('borderRadius.md'),
+                    overflowX: 'auto',
+                  },
+                  code: {
+                    backgroundColor: theme('colors.gray.200'),
+                    padding: '0.2em 0.4em',
+                    margin: '0',
+                    fontSize: '85%',
+                    borderRadius: '3px',
+                  },
+                  'pre code': {
+                    backgroundColor: 'transparent',
+                    padding: '0',
+                    margin: '0',
+                    fontSize: 'inherit',
+                    borderRadius: '0',
+                  },
+                  '.mermaid': {
+                    display: 'flex',
+                    justifyContent: 'center',
+                    margin: 'auto',
+                  },
+                  '.mermaid svg': {
+                    maxWidth: '100%', // Ensure mermaid diagrams are responsive
+                    height: 'auto',
+                  },
+                },
+              },
+            }),
+          }
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        textarea::-webkit-scrollbar, #preview::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track, #preview::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        textarea::-webkit-scrollbar-thumb, #preview::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover, #preview::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Basic styling for mermaid diagrams (fallback if prose not working as expected) */
+        .mermaid svg {
+            display: block; /* Ensure it takes up block space */
+            margin: 1em auto; /* Center it with some margin */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 अंतराफलक-regular">
+    <div class="container mx-auto p-2 sm:p-4 max-w-none">
+        <header class="mb-3 sm:mb-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-sky-700 select-none">Markdown Editor & Previewer</h1>
+            <div class="flex flex-wrap justify-center gap-1 sm:gap-2 my-3 sm:my-4">
+                <button id="btn-side-by-side" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Side-by-Side</button>
+                <button id="btn-edit-only" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Editor Only</button>
+                <button id="btn-view-only" class="bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Preview Only</button>
+                <button id="btn-copy" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-md text-sm sm:text-base transition-colors">Copy Markdown</button>
+            </div>
+        </header>
+
+        <main id="main-content" class="flex flex-col sm:flex-row sm:space-x-2 md:space-x-4" style="height: calc(100vh - 120px);">
+            <div id="editor-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1">
+                <textarea id="editor" class="w-full h-full p-2 sm:p-3 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 resize-none text-sm bg-white" placeholder="Enter Markdown here..."></textarea>
+            </div>
+            <div id="preview-container" class="w-full sm:w-1/2 h-1/2 sm:h-full p-1 mt-2 sm:mt-0">
+                <div id="preview" class="w-full h-full p-3 sm:p-4 border border-slate-300 rounded-md shadow-sm bg-white overflow-y-auto prose prose-sm sm:prose-base lg:prose-lg xl:prose-xl max-w-none"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const editorContainer = document.getElementById('editor-container');
+        const previewContainer = document.getElementById('preview-container');
+        const mainContent = document.getElementById('main-content');
+
+        const btnSideBySide = document.getElementById('btn-side-by-side');
+        const btnEditOnly = document.getElementById('btn-edit-only');
+        const btnViewOnly = document.getElementById('btn-view-only');
+        const btnCopy = document.getElementById('btn-copy');
+
+        // Initialize Mermaid
+        mermaid.initialize({ startOnLoad: false });
+
+        // Function to render markdown
+        async function renderMarkdown() {
+            const markdownText = editor.value;
+            preview.innerHTML = marked.parse(markdownText);
+
+            // Process Mermaid diagrams
+            const mermaidElements = preview.querySelectorAll('.language-mermaid');
+            for (let i = 0; i < mermaidElements.length; i++) {
+                const element = mermaidElements[i];
+                const mermaidCode = element.textContent;
+                try {
+                    const { svg } = await mermaid.render(`mermaid-graph-${i}`, mermaidCode);
+                    const div = document.createElement('div');
+                    div.className = 'mermaid'; // Add class for styling via Tailwind prose or custom CSS
+                    div.innerHTML = svg;
+                    element.parentNode.replaceWith(div);
+                } catch (e) {
+                    console.error("Mermaid rendering error:", e);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'text-red-500 font-bold';
+                    errorDiv.textContent = 'Error rendering Mermaid diagram.';
+                    element.parentNode.replaceWith(errorDiv);
+                }
+            }
+        }
+
+        // Event listener for editor input
+        editor.addEventListener('input', renderMarkdown);
+
+        // Event listeners for view mode buttons
+        btnSideBySide.addEventListener('click', () => {
+            editorContainer.classList.remove('hidden', 'sm:w-full');
+            previewContainer.classList.remove('hidden', 'sm:w-full');
+            editorContainer.classList.add('sm:w-1/2');
+            previewContainer.classList.add('sm:w-1/2');
+            mainContent.classList.remove('flex-col', 'sm:flex-col');
+            mainContent.classList.add('sm:flex-row');
+            // Ensure containers are visible on small screens if they were hidden
+            editorContainer.classList.remove('hidden');
+            previewContainer.classList.remove('hidden');
+             // Adjust height for mobile side-by-side (stacked)
+            editorContainer.classList.add('h-1/2', 'sm:h-full');
+            previewContainer.classList.add('h-1/2', 'sm:h-full');
+            renderMarkdown(); // Re-render in case mermaid diagrams need specific container size
+        });
+
+        btnEditOnly.addEventListener('click', () => {
+            editorContainer.classList.remove('hidden', 'sm:w-1/2');
+            editorContainer.classList.add('sm:w-full', 'w-full');
+            previewContainer.classList.add('hidden');
+            previewContainer.classList.remove('sm:w-1/2');
+            mainContent.classList.remove('sm:flex-row');
+            mainContent.classList.add('flex-col', 'sm:flex-col');
+             editorContainer.classList.remove('h-1/2');
+            editorContainer.classList.add('h-full');
+        });
+
+        btnViewOnly.addEventListener('click', () => {
+            previewContainer.classList.remove('hidden', 'sm:w-1/2');
+            previewContainer.classList.add('sm:w-full', 'w-full');
+            editorContainer.classList.add('hidden');
+            editorContainer.classList.remove('sm:w-1/2');
+            mainContent.classList.remove('sm:flex-row');
+            mainContent.classList.add('flex-col', 'sm:flex-col');
+            previewContainer.classList.remove('h-1/2');
+            previewContainer.classList.add('h-full');
+            renderMarkdown(); // Re-render in case mermaid diagrams need specific container size
+        });
+
+        // Event listener for copy button
+        btnCopy.addEventListener('click', () => {
+            if (navigator.clipboard && window.isSecureContext) { // Modern async clipboard API
+                navigator.clipboard.writeText(editor.value)
+                    .then(() => {
+                        btnCopy.textContent = 'Copied!';
+                        btnCopy.classList.add('bg-teal-500', 'hover:bg-teal-600');
+                        btnCopy.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                        setTimeout(() => {
+                            btnCopy.textContent = 'Copy Markdown';
+                            btnCopy.classList.remove('bg-teal-500', 'hover:bg-teal-600');
+                            btnCopy.classList.add('bg-amber-500', 'hover:bg-amber-600');
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        alert('Failed to copy text. See console for details.');
+                    });
+            } else { // Fallback for older browsers or insecure contexts
+                editor.select();
+                try {
+                    document.execCommand('copy');
+                    btnCopy.textContent = 'Copied! (fallback)';
+                     btnCopy.classList.add('bg-teal-500', 'hover:bg-teal-600');
+                    btnCopy.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                    setTimeout(() => {
+                        btnCopy.textContent = 'Copy Markdown';
+                        btnCopy.classList.remove('bg-teal-500', 'hover:bg-teal-600');
+                        btnCopy.classList.add('bg-amber-500', 'hover:bg-amber-600');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    alert('Failed to copy text using fallback. See console.');
+                }
+                window.getSelection().removeAllRanges(); // Deselect
+            }
+        });
+
+        // Initial content
+        editor.value = `# Welcome to Markdown Editor!
+
+This is a simple Markdown editor with a live preview. It supports standard Markdown and Mermaid diagrams.
+
+## Features
+- Side-by-side editing and preview
+- Editor only mode
+- Preview only mode
+- Copy Markdown to clipboard
+- Mermaid diagram support
+
+## Example Markdown
+Here's some **bold text** and *italic text*.
+
+### Lists
+1. First item
+2. Second item
+   - Sub-item A
+   - Sub-item B
+
+### Code Block
+\`\`\`javascript
+function greet(name) {
+  console.log(\`Hello, \${name}!\`);
+}
+greet('World');
+\`\`\`
+
+### Mermaid Diagram Example
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Is it?};
+    B -- Yes --> C[OK];
+    C --> D[End];
+    B -- No --> E[Really?];
+    E --> D[End];
+\`\`\`
+
+Try editing this text or pasting your own Markdown!
+`;
+        // Initial render
+        renderMarkdown();
+        // Default to side-by-side on load for larger screens
+        if (window.innerWidth >= 640) { // sm breakpoint in Tailwind
+             btnSideBySide.click();
+        } else { // On smaller screens, default to editor only or handle differently
+            // For mobile, let's default to stacked side-by-side initially
+            editorContainer.classList.remove('hidden', 'sm:w-full');
+            previewContainer.classList.remove('hidden', 'sm:w-full');
+            editorContainer.classList.add('w-full', 'h-1/2'); // Full width, half height
+            previewContainer.classList.add('w-full', 'h-1/2'); // Full width, half height
+            mainContent.classList.add('flex-col'); // Stack them vertically
+        }
+
+    </script>
+</body>
+</html>
