@@ -210,23 +210,90 @@ Waiting...
       reader.onload = function (e) {
         const img = new Image();
         img.onload = function () {
-          qrCanvasInput.width = img.width;
-          qrCanvasInput.height = img.height;
-          qrCanvasInputCtx.drawImage(img, 0, 0, img.width, img.height);
-          try {
-            const imageData = qrCanvasInputCtx.getImageData(0, 0, img.width, img.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert",
-            });
-            if (code) {
-              document.getElementById(targetInputId).value = code.data;
-              alert("✅ QR Code decoded successfully!");
-            } else {
-              alert("❌ Could not decode QR Code from image.");
+          const originalWidth = img.width;
+          const originalHeight = img.height;
+
+          // Define scales to try: 100%, 75%, 50%, 125%, 150% of original size
+          // And also some fixed target sizes, fitting image within these bounds.
+          // The goal is to handle QR codes that are too small or too large in the original image.
+          const scales = [1.0, 0.75, 0.5, 1.25, 1.5];
+          // Max dimensions for fixed targets to avoid excessive canvas sizes for small images scaled up too much.
+          const targetDimensions = [
+            {w: originalWidth, h: originalHeight}, // Original first
+            {w: 1024, h: 768},
+            {w: 800, h: 600},
+            {w: 640, h: 480},
+          ];
+
+          let decoded = false;
+
+          // Try with various scales of the original image
+          for (const scale of scales) {
+            if (decoded) break;
+            const newWidth = Math.round(originalWidth * scale);
+            const newHeight = Math.round(originalHeight * scale);
+
+            if (newWidth <= 0 || newHeight <= 0) continue; // Skip invalid dimensions
+
+            qrCanvasInput.width = newWidth;
+            qrCanvasInput.height = newHeight;
+            qrCanvasInputCtx.drawImage(img, 0, 0, newWidth, newHeight);
+            try {
+              const imageData = qrCanvasInputCtx.getImageData(0, 0, newWidth, newHeight);
+              const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert", // or "attemptBoth"
+              });
+              if (code) {
+                document.getElementById(targetInputId).value = code.data;
+                alert("✅ QR Code decoded successfully!");
+                decoded = true;
+                break;
+              }
+            } catch (err) {
+              console.warn(`jsQR error at scale ${scale}:`, err);
             }
-          } catch (err) {
-            console.error("jsQR error:", err);
-            alert("❌ Error decoding QR code: " + err.message);
+          }
+
+          // If not decoded, try fitting into target dimensions
+          if (!decoded) {
+            for (const targetDim of targetDimensions) {
+              if (decoded) break;
+              // Skip if this is just the original size again and it already failed
+              if (targetDim.w === originalWidth && targetDim.h === originalHeight && scales.includes(1.0)) continue;
+
+              let ratio = Math.min(targetDim.w / originalWidth, targetDim.h / originalHeight);
+              // If image is smaller than target, use original size (or scale 1.0) instead of upscaling too much
+              if (originalWidth < targetDim.w && originalHeight < targetDim.h) {
+                ratio = 1.0;
+              }
+
+              const newWidth = Math.round(originalWidth * ratio);
+              const newHeight = Math.round(originalHeight * ratio);
+
+              if (newWidth <= 0 || newHeight <= 0) continue;
+
+              qrCanvasInput.width = newWidth;
+              qrCanvasInput.height = newHeight;
+              qrCanvasInputCtx.drawImage(img, 0, 0, newWidth, newHeight);
+              try {
+                const imageData = qrCanvasInputCtx.getImageData(0, 0, newWidth, newHeight);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                  inversionAttempts: "dontInvert", // or "attemptBoth"
+                });
+                if (code) {
+                  document.getElementById(targetInputId).value = code.data;
+                  alert("✅ QR Code decoded successfully!");
+                  decoded = true;
+                  break;
+                }
+              } catch (err) {
+                console.warn(`jsQR error at target ${targetDim.w}x${targetDim.h}:`, err);
+              }
+            }
+          }
+
+          if (!decoded) {
+            alert("❌ Could not decode QR Code from image. Try pre-cropping or using a clearer image.");
           }
         };
         img.src = e.target.result;
